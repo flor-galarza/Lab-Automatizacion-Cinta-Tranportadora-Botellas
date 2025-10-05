@@ -4,6 +4,7 @@ import time
 import board
 import digitalio
 import pwmio
+
 import wifi
 import socketpool
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
@@ -144,6 +145,20 @@ def now_s():
     return time.monotonic()
 
 # ============================
+# Umbrales de atasco (AJUSTABLES)
+# ============================
+# Intervalo esperado global si no hay referencia calculada (Manual) o como base de monitoreo
+EXPECTED_BOTTLE_INTERVAL_S = 2.0
+# Tolerancia permitida contra el intervalo esperado (se suma al esperado)
+INTERVAL_TOLERANCE_S = 0.3
+# Tolerancia específica para modo Automático (±0.1 s)
+AUTO_INTERVAL_TOLERANCE_S = 0.1
+# Si no hay cambios en el estado del sensor (siempre en 1 o siempre en 0) por más de este tiempo → atasco
+SENSOR_STALL_TIMEOUT_S = 5.0
+# Cuando hay intervalo esperado (manual ya regulado o automático), si se supera esperado + tolerancia → atasco
+NO_BOTTLE_TIMEOUT_EXTRA_S = 0.0  # extra opcional al esperado (dejar en 0.0 si no se necesita)
+
+# ============================
 # Display 7 segmentos
 # ============================
 def _out_pin(gp):
@@ -265,6 +280,18 @@ error_state = False
 encoder_press_count = 0
 
 # ============================
+# Estado de sensor / tiempos
+# ============================
+last_ir_level = None
+last_state_change_time = None
+last_bottle_time = None
+
+# Armado de medición en modo Automático (se activa al confirmar selección con el botón)
+auto_armed = False
+auto_first_detection = None
+
+
+# ============================
 # Tiempo Manual
 # ============================
 first_manual_detection = None
@@ -341,6 +368,13 @@ def select_bottle():
         if pressed(sw):
             bt = bottle_types[bottle_index]
             print(f"Botella seleccionada: {bt}, velocidad: {bottle_speeds[bt]} m/s")
+            # Armar conteo automático desde la PRIMERA botella tras confirmar
+            global auto_armed, auto_first_detection, last_detection, last_bottle_time, last_state_change_time
+            auto_armed = True
+            auto_first_detection = None
+            last_detection = None
+            last_bottle_time = None
+            last_state_change_time = now_s()
             selecting = False
             time.sleep(0.3)
         time.sleep(0.05)
@@ -357,7 +391,16 @@ else:
 # ============================
 # Programa principal
 # ============================
-while True:    
+while True:   
+    t_now_loop = now_s()
+
+    # Calcular velocidad actual seleccionada (solo para monitoreo serial y lógica)
+    if modes[mode_index] == 1:
+        current_speed_mps = velocities[vel_index]
+    else:
+        bt_tmp = bottle_types[bottle_index]
+        current_speed_mps = bottle_speeds[bt_tmp] 
+   
     # Mostrar display y color "global" según estado
     if error_state:
         display_digit('E')
@@ -385,6 +428,11 @@ while True:
                 first_manual_detection = None
                 reference_time = None
                 t2 = None
+                last_bottle_time = None
+                last_state_change_time = now_s()
+                auto_armed = (modes[mode_index] == 2)
+                auto_first_detection = None
+                last_detection = None
                 print("Error resuelto, sistema reanudado.")
         else:
             paused = not paused
@@ -395,6 +443,10 @@ while True:
                     first_manual_detection = None
                     reference_time = None
                     t2 = None
+                    last_bottle_time = None
+                    last_state_change_time = now_s()
+                    auto_armed = False
+                    auto_first_detection = None
                 print("Sistema reanudado.")
         time.sleep(0.3)
 
@@ -409,52 +461,101 @@ while True:
 
     # ------- Detección de atascos -------
     if not error_state:
+        # Inicializar seguimiento de estado del IR
+        if last_ir_level is None:
+            last_ir_level = ir_detected()
+            last_state_change_time = t_now_loop
+
+        # Edge detection: flanco de subida (no detectado -> detectado)
+        current_ir = ir_detected()
+        prev_ir = last_ir_level
+        edge_rise = (not prev_ir) and current_ir
+        if current_ir != prev_ir:
+            last_state_change_time = t_now_loop
+            last_ir_level = current_ir
+
         if modes[mode_index]==1:
             # Manual: la primera botella inicia cronómetro (amarillo ya está desde la capa global)
             if first_manual_detection is None:
-                if ir_detected():
+                if edge_rise:
                     first_manual_detection = now_s()
                     print(f"Primera botella detectada en t={first_manual_detection:.2f}s")
-                    while ir_detected():
-                        time.sleep(0.005)
+                    # a partir de aquí la capa global pasará a verde cuando haya referencia
 
             # A la espera de la segunda botella para medir intervalo (sigue amarillo)
             elif reference_time is None:
-                if ir_detected():
+                if edge_rise:
                     second_time = now_s()
                     reference_time = (second_time - first_manual_detection)
                     print(f"Segunda botella detectada en t={second_time:.2f}s → intervalo regular={reference_time:.2f}s")
                     # al tener referencia, la capa global pasará a verde
-                    while ir_detected():
-                        time.sleep(0.005)
 
             else:
                 # Ya regulado → verde (según capa global)
-                if ir_detected():
+                if edge_rise and not error_state:
                     t = now_s()
                     print(f"Botella detectada en t={t:.2f}s")
                     if t2 is not None:
                         elapsed = (t - t2)
-                        if abs(elapsed - reference_time) > 2:
-                            print("¡Atasco crítico detectado en modo Manual!")
+                        expected_interval = reference_time if reference_time is not None else EXPECTED_BOTTLE_INTERVAL_S
+                        if elapsed > (expected_interval + INTERVAL_TOLERANCE_S):
+                            print(f"¡Atasco: intervalo excedido en Manual! esperado≈{expected_interval:.2f}s, real={elapsed:.2f}s")
                             error_state = True
                             encoder_press_count = 0
                     t2 = t
+                    last_bottle_time = t
+
+                # Timeout por no llegada de botella a tiempo
+                if (not error_state) and (last_bottle_time is not None):
+                    expected_interval = reference_time if reference_time is not None else EXPECTED_BOTTLE_INTERVAL_S
+                    if (t_now_loop - last_bottle_time) > (expected_interval + INTERVAL_TOLERANCE_S + NO_BOTTLE_TIMEOUT_EXTRA_S):
+                        print(f"¡Atasco: no se detectan botellas a tiempo en Manual! > {expected_interval + INTERVAL_TOLERANCE_S + NO_BOTTLE_TIMEOUT_EXTRA_S:.2f}s")
+                        error_state = True
+                        encoder_press_count = 0
 
         else:
             # Automático
             bt = bottle_types[bottle_index]
             expected_interval = bottle_sizes[bt] / bottle_speeds[bt]
-            if ir_detected():
-                t_now = now_s()
-                print(f"Botella detectada en t={t_now:.2f}s")
-                if last_detection is not None:
-                    elapsed = (t_now - last_detection)
-                    if abs(elapsed - expected_interval) > 2:
-                        print(f"¡Atasco crítico detectado en modo Automático! Intervalo esperado: {expected_interval:.2f}s, real: {elapsed:.2f}s")
+            if auto_armed and not error_state:
+                if edge_rise:
+                    t_now = now_s()
+                    print(f"Botella detectada en t={t_now:.2f}s (Auto)")
+                    # Primera botella tras armar → iniciar referencia
+                    if auto_first_detection is None:
+                        auto_first_detection = t_now
+                        last_bottle_time = t_now
+                    else:
+                        # Medir intervalo desde la anterior
+                        elapsed = (t_now - auto_first_detection)
+                        if elapsed > (expected_interval + AUTO_INTERVAL_TOLERANCE_S):
+                            print(f"¡Atasco: intervalo excedido en Automático! esperado≈{expected_interval:.2f}s, real={elapsed:.2f}s")
+                            error_state = True
+                            encoder_press_count = 0
+                        # Actualizar referencias para siguiente intervalo
+                        auto_first_detection = t_now
+                        last_detection = t_now
+                        last_bottle_time = t_now
+
+                # Timeout por no llegada de botella a tiempo (solo luego de primera detección)
+                if (not error_state) and (auto_first_detection is not None) and (last_bottle_time is not None):
+                    if (t_now_loop - last_bottle_time) > (expected_interval + AUTO_INTERVAL_TOLERANCE_S + NO_BOTTLE_TIMEOUT_EXTRA_S):
+                        print(f"¡Atasco: no se detectan botellas a tiempo en Automático! > {expected_interval + INTERVAL_TOLERANCE_S + NO_BOTTLE_TIMEOUT_EXTRA_S:.2f}s")
                         error_state = True
                         encoder_press_count = 0
-                last_detection = t_now
+
+        # Timeout por sensor atascado (sin cambios de estado mucho tiempo)
+        # Solo aplicar si ya hubo al menos una botella detectada y la velocidad actual es > 0
+        if (not error_state) and (last_state_change_time is not None) and (last_bottle_time is not None) and (current_speed_mps > 0.0):
+            if (t_now_loop - last_state_change_time) > SENSOR_STALL_TIMEOUT_S:
+                print(f"¡Atasco de sensor (sin cambios) por > {SENSOR_STALL_TIMEOUT_S:.1f}s!")
+                error_state = True
+                encoder_press_count = 0
+
+        # Forzar velocidad a 0 en atasco (solo para reporte serial)
+        if error_state and current_speed_mps != 0.0:
+            print("Forzando velocidad a 0 m/s por atasco")
+            current_speed_mps = 0.0
 
     # MQTT solo cada cierto tiempo para no interferir con el sensor IR
     # Solo procesar MQTT si no estamos en un estado crítico de detección
