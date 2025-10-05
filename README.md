@@ -68,7 +68,7 @@ Este proyecto está siendo desarrollado gracias al trabajo conjunto de:
 
 - [flor-galarza](https://github.com/flor-galarza)
 - [cazm0](https://github.com/cazm0)
-- Ian Lautaro Nuñez (IanNunez21)
+- [IanNunez21](https://github.com/IanNunez21)
 - [MaxDCoc](https://github.com/MaxDCoc)
 - [Renzo Urturi](https://github.com/Renzo-14)
 
