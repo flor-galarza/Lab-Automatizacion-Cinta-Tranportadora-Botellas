@@ -13,9 +13,9 @@ import json
 # ============================
 # Configuración de RED / MQTT
 # ============================
-SSID = "wfrre-Docentes"
-PASSWORD = "20$tscFrre.24"
-BROKER = "10.13.100.92"
+SSID = "Cocito"
+PASSWORD = "maxiox990422"
+BROKER = "192.168.100.66"  
 NOMBRE_EQUIPO = "CortoCircuito"
 DESCOVERY_TOPIC = "descubrir"
 TOPIC = f"sensores/{NOMBRE_EQUIPO}"
