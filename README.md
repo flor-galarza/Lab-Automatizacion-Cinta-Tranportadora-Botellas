@@ -46,21 +46,6 @@ El flujo del sistema puede ilustrarse de la siguiente manera:
 - **Regulando:** LED amarillo, en modo manual esperando referencia de velocidad.
 - **Seleccionando/Pausa:** LED azul, mientras se eligen parámetros o el sistema está pausado.
 
----
-
-## 🔄 Estado del proyecto
-
-- **Rama `main`:**  
-  - Contiene el archivo `v3.py`, probado y funcionando.  
-  - Faltan funcionalidades avanzadas del LED RGB que están presentes en `code.py`.
-
-- **Rama `merge-manual`:**  
-  - El código principal está migrado aquí pero **aún no ha sido probado**.
-  - Esta rama busca integrar mejoras y nuevas funcionalidades, especialmente en el control del RGB y lógica de detección.
-
-> El desarrollo continúa y se recomienda utilizar la rama `main` para implementaciones estables, mientras que la rama `merge-manual` se usa para pruebas y nuevas características.
-
----
 
 ## 👩‍💻 Colaboradores
 
