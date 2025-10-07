@@ -7,12 +7,12 @@ import pwmio
 import wifi
 import socketpool
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
-import json  # <-- NUEVO
+import json
 
 # Configuración de RED
-SSID = "Cocito"
-PASSWORD = "maxiox990422"
-BROKER = "192.168.100.66"  
+SSID = "wfrre-Docentes"
+PASSWORD = "20$tscFrre.24"
+BROKER = "10.13.100.72"  
 NOMBRE_EQUIPO = "CortoCircuito"
 DESCOVERY_TOPIC = "descubrir"
 TOPIC = f"sensores/{NOMBRE_EQUIPO}"
@@ -109,13 +109,18 @@ def publish():
             estado = compute_state()
 
             # Armamos payload útil (modo+valor característico)
-            if modes[mode_index] == 1:
-                modo = True
-                valor = velocities[vel_index]  # m/s
+            if error_state:
+                # En caso de atasco, velocidad = 0
+                valor = 0.0
+                modo = True if modes[mode_index] == 1 else False
             else:
-                modo = False
-                bt = bottle_types[bottle_index]
-                valor = bottle_speeds[bt]      # m/s
+                if modes[mode_index] == 1:
+                    modo = True
+                    valor = velocities[vel_index]  # m/s
+                else:
+                    modo = False
+                    bt = bottle_types[bottle_index]
+                    valor = bottle_speeds[bt]      # m/s
 
             # Publicar de forma más eficiente
             estado_topic = f"{TOPIC}/estado"
@@ -131,6 +136,25 @@ def publish():
 
         except Exception as e:
             print(f"Error publicando MQTT: {e}")
+
+def publish_serial_velocity():
+    """
+    Publica la velocidad actual por puerto serial para monitoreo.
+    Si hay atasco, la velocidad se reporta como 0.
+    """
+    if error_state:
+        # En caso de atasco, velocidad = 0
+        velocidad_serial = 0.0
+    else:
+        # Velocidad normal según el modo
+        if modes[mode_index] == 1:
+            velocidad_serial = velocities[vel_index]  # m/s
+        else:
+            bt = bottle_types[bottle_index]
+            velocidad_serial = bottle_speeds[bt]      # m/s
+    
+    # Publicar por puerto serial para el plotter
+    print(f"VELOCIDAD:{velocidad_serial:.2f}")
 
 
 
@@ -149,11 +173,11 @@ def now_s():
 # Intervalo esperado global si no hay referencia calculada (Manual) o como base de monitoreo
 EXPECTED_BOTTLE_INTERVAL_S = 2.0
 # Tolerancia permitida contra el intervalo esperado (se suma al esperado)
-INTERVAL_TOLERANCE_S = 0.3
-# Tolerancia específica para modo Automático (±0.1 s)
-AUTO_INTERVAL_TOLERANCE_S = 0.1
+INTERVAL_TOLERANCE_S = 1.0
+# Tolerancia específica para modo Automático (±1.0 s)
+AUTO_INTERVAL_TOLERANCE_S = 1.0
 # Si no hay cambios en el estado del sensor (siempre en 1 o siempre en 0) por más de este tiempo → atasco
-SENSOR_STALL_TIMEOUT_S = 5.0
+SENSOR_STALL_TIMEOUT_S = 30.0  # Aumentado para que no interfiera con el timeout correcto
 # Cuando hay intervalo esperado (manual ya regulado o automático), si se supera esperado + tolerancia → atasco
 NO_BOTTLE_TIMEOUT_EXTRA_S = 5.0  # extra opcional al esperado (ahora 5s sobre el intervalo regular)
 
@@ -272,7 +296,7 @@ velocities = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
 vel_index = 4
 
 bottle_types  = [1,2,3,4,5]
-bottle_speeds = {1:0.2,2:0.4,3:0.3,4:0.6,5:0.5}
+bottle_speeds = {1:0.2,2:0.4,3:0.6,4:0.8,5:1.0}
 bottle_sizes  = {1:0.05,2:0.08,3:0.06,4:0.1,5:0.07}
 bottle_index = 0
 
@@ -327,6 +351,8 @@ def select_mode():
         if pressed(sw):
             selected_mode = True
             print("Modo seleccionado:", "Manual" if modes[mode_index]==1 else "Automático")
+            # Publicar velocidad inicial por serial
+            publish_serial_velocity()
             time.sleep(0.3)
         time.sleep(0.05)
 
@@ -347,6 +373,8 @@ def select_velocity():
 
         if pressed(sw):
             print("Velocidad seleccionada:", velocities[vel_index], "m/s")
+            # Publicar nueva velocidad por serial
+            publish_serial_velocity()
             selecting = False
             time.sleep(0.3)
         time.sleep(0.05)
@@ -369,6 +397,8 @@ def select_bottle():
         if pressed(sw):
             bt = bottle_types[bottle_index]
             print(f"Botella seleccionada: {bt}, velocidad: {bottle_speeds[bt]} m/s")
+            # Publicar nueva velocidad por serial
+            publish_serial_velocity()
             # Armar conteo automático desde la PRIMERA botella tras confirmar
             global auto_armed, auto_first_detection, last_detection, last_bottle_time, last_state_change_time
             auto_armed = True
@@ -377,6 +407,8 @@ def select_bottle():
             # Iniciar conteo de timeout inmediatamente al armar (sin esperar primera botella)
             last_bottle_time = now_s()
             last_state_change_time = last_bottle_time
+            # En Automático, activar timeout inmediatamente sin esperar primera detección
+            auto_first_detection = now_s()  # Simular primera detección para activar timeout
             selecting = False
             time.sleep(0.3)
         time.sleep(0.05)
@@ -422,11 +454,16 @@ while True:
                 first_manual_detection = None
                 reference_time = None
                 t2 = None
-                last_bottle_time = None
                 last_state_change_time = now_s()
                 auto_armed = (modes[mode_index] == 2)
                 auto_first_detection = None
                 last_detection = None
+                # Reiniciar timeout correctamente según el modo
+                if modes[mode_index] == 2:  # Automático
+                    last_bottle_time = now_s()  # Iniciar timeout inmediatamente
+                    auto_first_detection = now_s()  # Simular primera detección
+                else:  # Manual
+                    last_bottle_time = None  # No iniciar hasta tener referencia
                 print("Error resuelto, sistema reanudado.")
         else:
             paused = not paused
@@ -437,10 +474,15 @@ while True:
                     first_manual_detection = None
                     reference_time = None
                     t2 = None
-                    last_bottle_time = None
+                    last_bottle_time = None  # No iniciar timeout hasta estar en "Funcionando"
                     last_state_change_time = now_s()
                     auto_armed = False
                     auto_first_detection = None
+                else:  # Automático
+                    last_bottle_time = now_s()  # Iniciar timeout inmediatamente
+                    last_state_change_time = now_s()
+                    auto_armed = True
+                    auto_first_detection = now_s()  # Simular primera detección
                 print("Sistema reanudado.")
         time.sleep(0.3)
 
@@ -494,18 +536,27 @@ while True:
                     if t2 is not None:
                         elapsed = (t - t2)
                         expected_interval = reference_time if reference_time is not None else EXPECTED_BOTTLE_INTERVAL_S
-                        if elapsed > (expected_interval + INTERVAL_TOLERANCE_S):
-                            print(f"¡Atasco: intervalo excedido en Manual! esperado≈{expected_interval:.2f}s, real={elapsed:.2f}s")
+                        min_interval = expected_interval - INTERVAL_TOLERANCE_S
+                        max_interval = expected_interval + INTERVAL_TOLERANCE_S
+                        if elapsed < min_interval or elapsed > max_interval:
+                            print(f"¡Atasco: intervalo fuera de rango en Manual! esperado≈{expected_interval:.2f}s±{INTERVAL_TOLERANCE_S:.1f}s, real={elapsed:.2f}s")
                             error_state = True
                             encoder_press_count = 0
                     t2 = t
                     last_bottle_time = t
 
                 # Timeout por no llegada de botella a tiempo (intervalo regular + 5s)
-                if (not error_state) and (last_bottle_time is not None):
-                    expected_interval = reference_time if reference_time is not None else EXPECTED_BOTTLE_INTERVAL_S
-                    if (t_now_loop - last_bottle_time) > (expected_interval + NO_BOTTLE_TIMEOUT_EXTRA_S):
-                        print(f"¡Atasco: no se detectan botellas a tiempo en Manual! > {expected_interval + NO_BOTTLE_TIMEOUT_EXTRA_S:.2f}s")
+                # En Manual: solo activar cuando está en estado "Funcionando" (ya tiene referencia)
+                if (not error_state) and (reference_time is not None) and (last_bottle_time is not None):
+                    expected_interval = reference_time
+                    timeout_threshold = expected_interval + NO_BOTTLE_TIMEOUT_EXTRA_S
+                    elapsed_since_last = t_now_loop - last_bottle_time
+                    # Debug cada 10 segundos
+                    if int(t_now_loop) % 10 == 0:
+                        print(f"DEBUG Manual: elapsed={elapsed_since_last:.2f}s, threshold={timeout_threshold:.2f}s, reference={reference_time:.2f}s")
+                    if elapsed_since_last > timeout_threshold:
+                        print(f"¡Atasco: no se detectan botellas a tiempo en Manual! > {timeout_threshold:.2f}s (intervalo: {expected_interval:.2f}s + 5s)")
+                        print(f"DEBUG: tiempo transcurrido: {elapsed_since_last:.2f}s, umbral: {timeout_threshold:.2f}s")
                         error_state = True
                         encoder_press_count = 0
 
@@ -518,27 +569,33 @@ while True:
                 if edge_rise:
                     t_now = now_s()
                     print(f"Botella detectada en t={t_now:.2f}s (Auto)")
-                    # Primera botella tras armar → iniciar referencia
-                    if auto_first_detection is None:
-                        auto_first_detection = t_now
-                        last_bottle_time = t_now
-                    else:
+                    # Actualizar tiempo de última botella
+                    last_bottle_time = t_now
+                    # Si es la primera detección real, actualizar auto_first_detection
+                    if auto_first_detection is not None:
                         # Medir intervalo desde la anterior
                         elapsed = (t_now - auto_first_detection)
-                        if elapsed > (expected_interval + AUTO_INTERVAL_TOLERANCE_S):
-                            print(f"¡Atasco: intervalo excedido en Automático! esperado≈{expected_interval:.2f}s, real={elapsed:.2f}s")
+                        min_interval = expected_interval - AUTO_INTERVAL_TOLERANCE_S
+                        max_interval = expected_interval + AUTO_INTERVAL_TOLERANCE_S
+                        if elapsed < min_interval or elapsed > max_interval:
+                            print(f"¡Atasco: intervalo fuera de rango en Automático! esperado≈{expected_interval:.2f}s±{AUTO_INTERVAL_TOLERANCE_S:.1f}s, real={elapsed:.2f}s")
                             error_state = True
                             encoder_press_count = 0
-                        # Actualizar referencias para siguiente intervalo
-                        auto_first_detection = t_now
-                        last_detection = t_now
-                        last_bottle_time = t_now
+                    # Actualizar referencias para siguiente intervalo
+                    auto_first_detection = t_now
+                    last_detection = t_now
 
                 # Timeout por no llegada de botella a tiempo (intervalo regular + 5s)
-                # En Automático corre desde que se arma la selección (sin esperar primera botella)
+                # En Automático: activar inmediatamente al armar
                 if (not error_state) and (last_bottle_time is not None):
-                    if (t_now_loop - last_bottle_time) > (expected_interval + NO_BOTTLE_TIMEOUT_EXTRA_S):
-                        print(f"¡Atasco: no se detectan botellas a tiempo en Automático! > {expected_interval + NO_BOTTLE_TIMEOUT_EXTRA_S:.2f}s")
+                    timeout_threshold = expected_interval + NO_BOTTLE_TIMEOUT_EXTRA_S
+                    elapsed_since_last = t_now_loop - last_bottle_time
+                    # Debug cada 10 segundos
+                    if int(t_now_loop) % 10 == 0:
+                        print(f"DEBUG Auto: elapsed={elapsed_since_last:.2f}s, threshold={timeout_threshold:.2f}s, expected={expected_interval:.2f}s")
+                    if elapsed_since_last > timeout_threshold:
+                        print(f"¡Atasco: no se detectan botellas a tiempo en Automático! > {timeout_threshold:.2f}s (intervalo: {expected_interval:.2f}s + 5s)")
+                        print(f"DEBUG: tiempo transcurrido: {elapsed_since_last:.2f}s, umbral: {timeout_threshold:.2f}s")
                         error_state = True
                         encoder_press_count = 0
 
@@ -569,5 +626,11 @@ while True:
     except Exception:
         pass  # Silenciar errores de MQTT loop
     publish()
+    
+    # Monitoreo por puerto serial de velocidad para el plotter
+    publish_serial_velocity()
 
     time.sleep(0.05)
+
+
+
