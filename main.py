@@ -9,7 +9,7 @@ import socketpool
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import json
 
-# Configuración de RED
+# Configuración de RED (modificar para hacer uso de la red wifi actual, junto con su contraseña e ip)
 SSID = "wfrre-Docentes"
 PASSWORD = "20$tscFrre.24"
 BROKER = "10.13.100.72"  
