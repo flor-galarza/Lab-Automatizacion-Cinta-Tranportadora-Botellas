@@ -5,6 +5,136 @@ import board
 import digitalio
 import pwmio
 
+import wifi
+import socketpool
+import adafruit_minimqtt.adafruit_minimqtt as MQTT
+import json  # <-- NUEVO
+
+# Configuración de RED
+SSID = "wfrre-Docentes"
+PASSWORD = "20$tscFrre.24"
+BROKER = "10.13.100.92"  
+NOMBRE_EQUIPO = "CortoCircuito"
+DESCOVERY_TOPIC = "descubrir"
+TOPIC = f"sensores/{NOMBRE_EQUIPO}"
+
+print(f"Intentando conectar a {SSID}...")
+try:
+    wifi.radio.connect(SSID, PASSWORD)
+    print(f"Conectado a {SSID}")
+    print(f"Dirección IP: {wifi.radio.ipv4_address}")
+except Exception as e:
+    print(f"Error al conectar a WiFi: {e}")
+    while True:
+        pass 
+
+# Configuración MQTT 
+pool = socketpool.SocketPool(wifi.radio)
+
+def connect(client, userdata, flags, rc):
+    print("Conectado al broker MQTT")
+    # Anunciamos qué magnitudes publica este equipo (incluye 'estado')
+    discovery_msg = {"equipo": NOMBRE_EQUIPO, "magnitudes": ["estado", "velocidad", "modo"]}
+    client.publish(DESCOVERY_TOPIC, json.dumps(discovery_msg))
+
+mqtt_client = MQTT.MQTT(
+    broker=BROKER,
+    port=1883,
+    socket_pool=pool,
+    socket_timeout=5.0,  # Timeout más generoso para conexiones lentas
+    keep_alive=60
+)
+mqtt_client.on_connect = connect
+
+# Conectar con reintentos manuales
+print("Conectando a MQTT...")
+max_retries = 5
+retry_count = 0
+connected = False
+
+while not connected and retry_count < max_retries:
+    try:
+        print(f"Intento {retry_count + 1}/{max_retries}...")
+        mqtt_client.connect()
+        connected = True
+        print("Conectado al broker MQTT exitosamente")
+    except Exception as e:
+        retry_count += 1
+        print(f"Error de conexión: {e}")
+        if retry_count < max_retries:
+            print("Esperando 3 segundos...")
+            time.sleep(3)
+        else:
+            print("No se pudo conectar después de todos los intentos")
+            print("Reiniciando en 5 segundos...")
+            time.sleep(5)
+            import supervisor
+            supervisor.reload()
+
+# Usamos estas variables globales para controlar cada cuánto publicamos
+last_pub = 0
+PUB_INTERVAL = 2  # segundos - reducido de 5 a 2 para mejor balance
+
+def compute_state():
+    """
+    Devuelve el estado textual del sistema:
+    - 'Funcionando'   -> LED verde
+    - 'Atasco'        -> LED rojo titilando
+    - 'Regulando'     -> LED amarillo (manual sin referencia aún)
+    - 'Seleccionando' -> LED azul (menús/pausa)
+    """
+    # Estado de error (atasco) manda primero
+    if error_state:
+        return "Atasco"
+
+    # Menús de selección o pausa usan el LED azul
+    # (en tu lógica, 'paused' muestra azul y durante select_* también)
+    if paused or not selected_mode:
+        return "Seleccionando"
+
+    # Manual: hasta que haya referencia (first_manual_detection y reference_time) está en amarillo
+    if modes[mode_index] == 1:
+        if first_manual_detection is None or reference_time is None:
+            return "Regulando"
+        return "Funcionando"
+
+    # Automático corre en verde
+    return "Funcionando"
+
+
+def publish():
+    global last_pub
+    now = time.monotonic()
+    if now - last_pub >= PUB_INTERVAL:
+        try:
+            estado = compute_state()
+
+            # Armamos payload útil (modo+valor característico)
+            if modes[mode_index] == 1:
+                modo = True
+                valor = velocities[vel_index]  # m/s
+            else:
+                modo = False
+                bt = bottle_types[bottle_index]
+                valor = bottle_speeds[bt]      # m/s
+
+            # Publicar de forma más eficiente
+            estado_topic = f"{TOPIC}/estado"
+            velocidad_topic = f"{TOPIC}/velocidad"
+            modo_topic = f"{TOPIC}/modo"
+            
+            # Publicar todos los mensajes de una vez
+            mqtt_client.publish(estado_topic, str(estado))
+            mqtt_client.publish(velocidad_topic, str(valor))
+            mqtt_client.publish(modo_topic, str(modo).lower())
+            
+            last_pub = now
+
+        except Exception as e:
+            print(f"Error publicando MQTT: {e}")
+
+
+
 # ============================
 # Config generales / Utiles
 # ============================
@@ -160,6 +290,7 @@ last_bottle_time = None
 auto_armed = False
 auto_first_detection = None
 
+
 # ============================
 # Tiempo Manual
 # ============================
@@ -260,7 +391,7 @@ else:
 # ============================
 # Programa principal
 # ============================
-while True:
+while True:   
     t_now_loop = now_s()
 
     # Calcular velocidad actual seleccionada (solo para monitoreo serial y lógica)
@@ -268,8 +399,8 @@ while True:
         current_speed_mps = velocities[vel_index]
     else:
         bt_tmp = bottle_types[bottle_index]
-        current_speed_mps = bottle_speeds[bt_tmp]
-
+        current_speed_mps = bottle_speeds[bt_tmp] 
+   
     # Mostrar display y color "global" según estado
     if error_state:
         display_digit('E')
@@ -426,4 +557,16 @@ while True:
             print("Forzando velocidad a 0 m/s por atasco")
             current_speed_mps = 0.0
 
-    time.sleep(0.05)
+    # MQTT solo cada cierto tiempo para no interferir con el sensor IR
+    # Solo procesar MQTT si no estamos en un estado crítico de detección
+    try:
+        mqtt_client.loop(1.0)  # Debe ser >= socket_timeout (5.0)
+    except Exception:
+        pass  # Silenciar errores de MQTT loop
+    publish()
+
+    time.sleep(0.005)  # Reducido a 0.005 para máxima responsividad del sensor IR
+
+
+
+
