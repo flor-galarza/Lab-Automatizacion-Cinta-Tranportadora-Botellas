@@ -1,0 +1,1071 @@
+/* style.css — Estilos Premium para el Dashboard de Simulación IoT */
+
+:root {
+    --bg-main: #0b0f19;
+    --bg-card: rgba(17, 24, 39, 0.7);
+    --border-card: rgba(255, 255, 255, 0.08);
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    
+    /* Colores del Estado de la Máquina */
+    --color-normal: #10b981;      /* Verde Esmeralda (Funcionando) */
+    --color-selecting: #0ea5e9;   /* Azul Cielo (Seleccionando/Pausa) */
+    --color-yellow: #f59e0b;      /* Amarillo Ámbar (Regulando) */
+    --color-error: #ef4444;       /* Rojo Coral (Atasco) */
+    --color-off: #1f2937;         /* Gris Oscuro (Componente Apagado) */
+    
+    /* Neón glow effects */
+    --glow-normal: 0 0 15px rgba(16, 185, 129, 0.5);
+    --glow-selecting: 0 0 15px rgba(14, 165, 233, 0.5);
+    --glow-yellow: 0 0 15px rgba(245, 158, 11, 0.5);
+    --glow-error: 0 0 20px rgba(239, 68, 68, 0.8);
+    
+    --font-sans: 'Outfit', sans-serif;
+    --font-mono: 'Fira Code', monospace;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
+    background-attachment: fixed;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #0b0f19;
+}
+::-webkit-scrollbar-thumb {
+    background: #1f2937;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #374151;
+}
+
+.app-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* HEADER STYLE */
+.main-header {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-card);
+    border-radius: 16px;
+    padding: 15px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo i {
+    font-size: 2rem;
+    color: var(--color-selecting);
+    filter: drop-shadow(0 0 8px rgba(14, 165, 233, 0.6));
+}
+
+.logo-text h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, #f3f4f6, #9ca3af);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.logo-text span {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.system-badge {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 8px 16px;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-indicator-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--color-selecting);
+    box-shadow: var(--glow-selecting);
+    transition: var(--transition);
+}
+
+#system-status-text {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* MAIN LAYOUT GRID */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 20px;
+}
+
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* CARDS COMMON */
+.card {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-card);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 12px;
+}
+
+.card-header h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #e5e7eb;
+}
+
+.card-header h2 i {
+    color: var(--color-selecting);
+}
+
+/* PANEL 1: CINTA TRANSPORTADORA */
+.physical-simulation-card {
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.7) 0%, rgba(31, 41, 55, 0.3) 100%);
+}
+
+.simulation-speed-tag {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.simulation-speed-tag span {
+    color: var(--color-selecting);
+    font-weight: 700;
+}
+
+.conveyor-container {
+    background: #080b11;
+    border-radius: 12px;
+    height: 180px;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #2d3748;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+}
+
+/* Haz del sensor IR */
+.ir-beam-visual {
+    position: absolute;
+    left: 70%;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: rgba(239, 68, 68, 0.15); /* Rojo transparente por defecto (haz invisible) */
+    z-index: 2;
+    transition: background 0.1s ease;
+}
+
+.ir-beam-visual.active {
+    background: rgba(239, 68, 68, 0.8); /* Rojo brillante al obstruirse */
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+}
+
+/* Cinta */
+.conveyor-track {
+    width: 100%;
+    height: 30px;
+    background: repeating-linear-gradient(
+        90deg,
+        #1e293b,
+        #1e293b 20px,
+        #0f172a 20px,
+        #0f172a 40px
+    );
+    position: absolute;
+    bottom: 45px;
+    left: 0;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+    border-top: 2px solid #475569;
+    border-bottom: 2px solid #475569;
+    animation: conveyor-move 0s linear infinite; /* Animado dinámicamente con JS */
+}
+
+@keyframes conveyor-move {
+    from { background-position: 0 0; }
+    to { background-position: 40px 0; }
+}
+
+/* Rodillos de la cinta */
+.conveyor-rollers {
+    position: absolute;
+    bottom: 15px;
+    width: 96%;
+    left: 2%;
+    display: flex;
+    justify-content: space-between;
+}
+
+.roller {
+    color: #475569;
+    font-size: 1.2rem;
+    animation: roller-spin 0s linear infinite; /* Animado con JS */
+}
+
+@keyframes roller-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* BOTELLA CSS */
+.bottle {
+    position: absolute;
+    width: 24px;
+    height: 70px;
+    bottom: 30px; /* Sobre la cinta */
+    left: -30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 3;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+    transition: transform 0.05s linear; /* Movimiento suave */
+}
+
+.bottle-neck {
+    width: 8px;
+    height: 15px;
+    background: rgba(226, 232, 240, 0.4);
+    border: 1.5px solid rgba(255, 255, 255, 0.8);
+    border-bottom: none;
+    border-radius: 2px 2px 0 0;
+    position: relative;
+}
+
+.bottle-cap {
+    width: 10px;
+    height: 4px;
+    background: #ef4444; /* Tapa roja clásica */
+    position: absolute;
+    top: -4px;
+    left: -2.5px;
+    border-radius: 1px;
+}
+
+.bottle-body {
+    width: 22px;
+    height: 55px;
+    background: linear-gradient(90deg, rgba(226, 232, 240, 0.3) 0%, rgba(255, 255, 255, 0.5) 50%, rgba(226, 232, 240, 0.3) 100%);
+    border: 1.5px solid rgba(255, 255, 255, 0.8);
+    border-radius: 4px 4px 6px 6px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Líquido dentro de la botella */
+.bottle-liquid {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 80%; /* Nivel de llenado */
+    background: rgba(14, 165, 233, 0.7); /* Líquido azul embotellado */
+    border-radius: 0 0 4px 4px;
+    transition: height 0.5s ease;
+}
+
+/* Etiqueta de la botella */
+.bottle-label {
+    position: absolute;
+    width: 100%;
+    height: 18px;
+    top: 18px;
+    background: #f1f5f9;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bottle-label::after {
+    content: '';
+    width: 8px;
+    height: 2px;
+    background: #0ea5e9;
+}
+
+/* ESTADO DE LOS SENSORES FÍSICOS */
+.sensor-status-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.sensor-item {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 12px 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.sensor-led {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: var(--color-off);
+    border: 1px solid rgba(0,0,0,0.5);
+    box-shadow: none;
+    transition: var(--transition);
+}
+
+.sensor-led.active {
+    background-color: var(--color-error);
+    box-shadow: 0 0 10px var(--color-error);
+}
+
+.sensor-label {
+    display: flex;
+    flex-direction: column;
+}
+
+.sensor-label strong {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.sensor-label span {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+
+.bottle-icon-status {
+    font-size: 1.4rem;
+    color: var(--color-selecting);
+    transition: var(--transition);
+}
+
+.bottle-icon-status.active {
+    animation: bounce 0.5s ease;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+
+/* PANEL 2: CONTROLADOR EMBEBIDO (PICO MOCKUP) */
+.hw-board-card {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(17, 24, 39, 0.5) 100%);
+}
+
+.hw-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 30px;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .hw-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Placa Pico Mockup */
+.pico-board {
+    display: flex;
+    justify-content: center;
+}
+
+.pico-pcb {
+    width: 150px;
+    height: 320px;
+    background: #0b6623; /* Verde PCB de Raspberry Pi */
+    border-radius: 8px;
+    position: relative;
+    border: 2px solid #053b13;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.pico-pcb::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    bottom: 5px;
+    left: 8px;
+    right: 8px;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.pico-header {
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 15px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.pico-chip {
+    width: 50px;
+    height: 50px;
+    background: #111;
+    border-radius: 4px;
+    border: 1px solid #333;
+    position: absolute;
+    top: 110px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.55rem;
+    font-family: var(--font-mono);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+}
+
+.wifi-chip {
+    width: 35px;
+    height: 30px;
+    background: #bbb; /* Chip metálico plateado de WiFi */
+    border: 1px solid #999;
+    border-radius: 3px;
+    position: absolute;
+    top: 45px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #444;
+    font-size: 0.8rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.usb-port {
+    width: 32px;
+    height: 18px;
+    background: #718096;
+    border: 1px solid #4a5568;
+    position: absolute;
+    top: -8px;
+    border-radius: 3px 3px 0 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+/* Pines Laterales */
+.pin {
+    position: absolute;
+    font-family: var(--font-mono);
+    font-size: 0.42rem;
+    color: #ffd700;
+    background: rgba(0,0,0,0.6);
+    padding: 1px 3px;
+    border-radius: 1px;
+    border: 0.5px solid #d4af37;
+}
+
+.pico-pins-left {
+    position: absolute;
+    left: -12px;
+    top: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pico-pins-right {
+    position: absolute;
+    right: -12px;
+    top: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+/* Posición de pines específicos visuales */
+.GP0  { top: 5px; }
+.GP1  { top: 22px; }
+.GP2  { top: 39px; }
+.GP3  { top: 56px; }
+.GP4  { top: 73px; }
+.GP5  { top: 90px; }
+.GP6  { top: 107px; }
+.GP7  { top: 124px; }
+.GP8  { top: 141px; }
+.GP9  { top: 158px; }
+
+.GP21 { top: 5px; }
+.GP22 { top: 22px; }
+.RUN  { top: 39px; }
+.V3   { top: 56px; }
+.GND  { top: 73px; }
+.VSYS { top: 90px; }
+.GP10 { top: 107px; }
+.GP11 { top: 124px; }
+.GP12 { top: 141px; }
+.GP13 { top: 158px; }
+
+/* Módulos de Hardware Conectados */
+.hardware-components {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 20px;
+    width: 100%;
+}
+
+.hw-module {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    text-align: center;
+}
+
+.hw-module h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.module-caption {
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* 7 SEGMENT DISPLAY */
+.seven-segment-container {
+    background: #050505;
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid #222;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.9);
+}
+
+.seven-segment {
+    position: relative;
+    width: 32px;
+    height: 60px;
+}
+
+.segment {
+    position: absolute;
+    background-color: #1a080a; /* Apagado */
+    border-radius: 10px;
+    transition: background-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+/* Posiciones de los segmentos clásicos de 7 segmentos */
+.segment-a { top: 0; left: 4px; width: 24px; height: 4px; }
+.segment-b { top: 3px; right: 0; width: 4px; height: 25px; }
+.segment-c { bottom: 3px; right: 0; width: 4px; height: 25px; }
+.segment-d { bottom: 0; left: 4px; width: 24px; height: 4px; }
+.segment-e { bottom: 3px; left: 0; width: 4px; height: 25px; }
+.segment-f { top: 3px; left: 0; width: 4px; height: 25px; }
+.segment-g { top: 28px; left: 4px; width: 24px; height: 4px; }
+
+/* Estilo Activo */
+.segment.active {
+    background-color: #ff003c; /* Rojo brillante neón */
+    box-shadow: 0 0 8px rgba(255, 0, 60, 0.8), 0 0 20px rgba(255, 0, 60, 0.4);
+}
+
+/* LED RGB */
+.led-rgb-glow-container {
+    height: 70px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.led-rgb {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff 0%, #4b5563 50%, #1f2937 100%);
+    border: 2px solid #374151;
+    box-shadow: none;
+    transition: var(--transition);
+}
+
+/* Estados del LED RGB */
+.led-rgb.selecting {
+    background: radial-gradient(circle at 35% 35%, #e0f2fe 0%, var(--color-selecting) 60%, #0369a1 100%);
+    box-shadow: var(--glow-selecting), 0 0 35px rgba(14, 165, 233, 0.3);
+}
+
+.led-rgb.normal {
+    background: radial-gradient(circle at 35% 35%, #d1fae5 0%, var(--color-normal) 60%, #047857 100%);
+    box-shadow: var(--glow-normal), 0 0 35px rgba(16, 185, 129, 0.3);
+}
+
+.led-rgb.yellow {
+    background: radial-gradient(circle at 35% 35%, #fef3c7 0%, var(--color-yellow) 60%, #b45309 100%);
+    box-shadow: var(--glow-yellow), 0 0 35px rgba(245, 158, 11, 0.3);
+}
+
+.led-rgb.error {
+    background: radial-gradient(circle at 35% 35%, #fee2e2 0%, var(--color-error) 60%, #b91c1c 100%);
+    animation: led-blink-red 0.3s infinite alternate;
+}
+
+@keyframes led-blink-red {
+    from {
+        box-shadow: var(--glow-error), 0 0 40px rgba(239, 68, 68, 0.5);
+    }
+    to {
+        box-shadow: 0 0 2px rgba(239, 68, 68, 0.2);
+        background: radial-gradient(circle at 35% 35%, #374151 0%, #1f2937 100%);
+    }
+}
+
+/* ENCODER ROTATIVO */
+.encoder-knob-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.encoder-shaft {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: conic-gradient(
+        #2d3748 0deg,
+        #4a5568 90deg,
+        #718096 180deg,
+        #4a5568 270deg,
+        #2d3748 360deg
+    );
+    border: 3px solid #1a202c;
+    box-shadow: 
+        0 4px 6px -1px rgba(0,0,0,0.5),
+        inset 0 2px 4px rgba(255,255,255,0.2),
+        inset 0 -2px 4px rgba(0,0,0,0.4);
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.15s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.encoder-shaft:active {
+    transform: scale(0.94);
+}
+
+.encoder-indicator {
+    position: absolute;
+    top: 8px;
+    left: 27px;
+    width: 6px;
+    height: 6px;
+    background-color: #f3f4f6;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+.encoder-step-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-primary);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8rem;
+    transition: var(--transition);
+}
+
+.encoder-step-btn:hover {
+    background: rgba(255,255,255,0.12);
+    color: var(--color-selecting);
+}
+
+.encoder-click-btn {
+    width: 100%;
+}
+
+/* BOTONES DE COMPONENTES HARDWARE */
+.hw-btn {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    transition: var(--transition);
+}
+
+.hw-btn:hover {
+    background: #334155;
+    border-color: var(--color-selecting);
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
+}
+
+.hw-btn:active {
+    transform: translateY(1px);
+}
+
+
+/* PANEL 3: PANEL DE EVENTOS / TESTING */
+.fault-buttons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+}
+
+.simulation-control-btn {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    padding: 12px 10px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    transition: var(--transition);
+}
+
+.simulation-control-btn i {
+    font-size: 1.2rem;
+}
+
+.simulation-control-btn:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: var(--color-normal);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+}
+
+.simulation-control-btn.active {
+    background: var(--color-normal);
+    border-color: var(--color-normal);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.simulation-control-btn.btn-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: #fde047;
+}
+
+.simulation-control-btn.btn-warning:hover {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: var(--color-yellow);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+.simulation-control-btn.btn-warning.active {
+    background: var(--color-yellow);
+    border-color: var(--color-yellow);
+    color: #000;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+}
+
+.simulation-control-btn.btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+}
+
+.simulation-control-btn.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: var(--color-error);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+}
+
+.simulation-control-btn.btn-danger.active {
+    background: var(--color-error);
+    border-color: var(--color-error);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+
+/* PANEL 4: TELEMETRIA MQTT */
+.mqtt-broker-tag {
+    background: rgba(14, 165, 233, 0.1);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: var(--color-selecting);
+    border: 1px solid rgba(14, 165, 233, 0.2);
+}
+
+.tag-highlight {
+    font-family: var(--font-mono);
+    font-weight: 700;
+}
+
+.mqtt-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+@media (max-width: 576px) {
+    .mqtt-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mqtt-data-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: var(--transition);
+}
+
+.mqtt-data-card:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.mqtt-topic {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mqtt-value-box {
+    font-size: 1.15rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--color-selecting);
+    text-shadow: 0 0 8px rgba(14, 165, 233, 0.2);
+}
+
+.device-discovery-message {
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px dashed rgba(16, 185, 129, 0.2);
+    border-radius: 8px;
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.device-discovery-message i {
+    color: var(--color-normal);
+    font-size: 1rem;
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .4; }
+}
+
+
+/* PANEL 5: TERMINAL DE CONSOLA SERIAL */
+.terminal-clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: var(--transition);
+}
+
+.terminal-clear-btn:hover {
+    color: var(--color-error);
+}
+
+.serial-terminal-output {
+    background: #05070c;
+    border-radius: 10px;
+    height: 160px;
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.4;
+    overflow-y: auto;
+    border: 1px solid #1a202c;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.log-line {
+    word-break: break-all;
+    display: flex;
+    gap: 8px;
+}
+
+.log-time {
+    color: #4b5563;
+    user-select: none;
+}
+
+.log-text {
+    color: #e5e7eb;
+}
+
+/* Colores de sintaxis en terminal */
+.log-normal { color: #34d399; }
+.log-info { color: #60a5fa; }
+.log-warning { color: #fbbf24; }
+.log-error { color: #f87171; }
+.log-serial { color: #c084fc; font-weight: 600; } /* Mensaje VELOCIDAD:X.X */
+
+
+/* FOOTER STYLES */
+.app-footer {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-card);
+    border-radius: 16px;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1.5fr;
+    align-items: center;
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .app-footer {
+        grid-template-columns: 1fr;
+        text-align: center !important;
+    }
+    .footer-col {
+        text-align: center !important;
+    }
+}
+
+.footer-col h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+}
+
+.footer-col p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.tech-tag {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    margin-left: 8px;
+}
+
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
